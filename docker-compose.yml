@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:latest
+    container_name: my-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mydatabase
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "user", "-d", "mydatabase"]
+      interval: 10s
+      retries: 5
+      timeout: 5s
+    networks:
+      - mynetwork
+
+  backend:
+    build: ./backend  
+    container_name: my-backend
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://user:password@postgres:5432/mydatabase"
+    ports:
+      - "2001:2001"
+    volumes:
+      - ./backend:/app
+    command: ["npm", "run", "dev"]
+    networks:
+      - mynetwork
+
+  frontend:
+    build: ./frontend 
+    container_name: my-frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    networks:
+      - mynetwork
+
+volumes:
+  postgres_data:
+
+networks:
+  mynetwork:
